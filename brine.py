@@ -133,6 +133,7 @@ TEMPLATES = {
           sysctl.present:
             - name: {{ setting }}
             - value: {{ value }}
+            - config: /etc/sysctl.conf
         {% endfor %}
         """),
 
