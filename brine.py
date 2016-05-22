@@ -4,7 +4,7 @@ import os
 import json
 import textwrap
 import string
-
+import sys
 
 class Template(object):
     """
@@ -18,6 +18,8 @@ class Template(object):
     def render(self, **ctx):
         return self.tmpl.substitute(**ctx)
 
+class BrineError(Exception):
+    pass
 
 # links to Salt documentation that we will use to enhance the statefile
 DOC_URLS = {
@@ -168,7 +170,6 @@ class Brine(object):
         self.file_name = dict()
         self.file_content = dict()
 
-
     def load(self, filename='Brinefile', **kwargs):
 
         with open(filename, 'r') as fp:
@@ -182,7 +183,7 @@ class Brine(object):
             self.prefix = 'element'
 
         if not self.statename:
-            raise Exception('Brinefile is missing required section. Choose one of: %rolename, %elementname')
+            raise BrineError('Brinefile is missing required section. Choose one of: %rolename, %elementname')
 
         self.path = os.path.join(self.prefix, self.statename.replace('.', '/'))
         self.files_dir = kwargs.get('files_dir', 'files')
@@ -301,6 +302,8 @@ class Brine(object):
             #
 
             """)
+        if 'description' not in self.parsed:
+            raise BrineError('Brinefile is missing required section %description')
         d = '\n'.join('#   {0}'.format(line) for line in self.parsed['description'])
         return tmpl.render(statename=self.statename, description=d)
 
@@ -468,7 +471,7 @@ class Brine(object):
                     tmpl = TEMPLATES['file_absent']
                 lines.append(tmpl.render(state=self.statename, linkname=item['linkname'], targetname=item['targetname']))
             else:
-                raise Exception('{} in %symlinks section does not have target. Use "linkname->targetname" to point your link to your target'.format(item))
+                raise BrineError('{} in %symlinks section does not have target. Use "linkname->targetname" to point your link to your target'.format(item))
         return '\n'.join(lines)
 
 #--- sysctl
@@ -535,7 +538,7 @@ class Brine(object):
                 else:
                     return None
             else:
-                raise Exception('{} in %sysctl section does not have a value. Use "sysctlsetting=sysctlvalue" to set value'.format(item))
+                raise BrineError('{} in %sysctl section does not have a value. Use "sysctlsetting=sysctlvalue" to set value'.format(item))
         return '\n'.join(lines)
 
 #--- services
@@ -570,7 +573,11 @@ class Brine(object):
 
 def main():
     brine = Brine()
-    brine.load('Brinefile')
+    try:
+        brine.load('Brinefile')
+    except BrineError as e:
+        sys.stderr.write("Error: {0}\n".format(e.message))
+        sys.exit(1)
     brine.save_files()
 
 
