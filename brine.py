@@ -309,6 +309,12 @@ class Brine(object):
 
 
     def has_section(self, name):
+        # This condition should fix the following:
+        # If you have a %directories section without
+        # a %files section the ## FILES comment-header is not
+        # placed in the init.sls
+        if name == 'files' and len(self.parsed.get(name, [])) == 0:
+            name = 'directories'
         return len(self.parsed.get(name, [])) > 0
 
 
