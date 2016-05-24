@@ -29,7 +29,7 @@ queue.rabbitmq.server
 /etc/rabbitmq/rabbitmq.config
 /etc/rabbitmq/enabled_plugins
 
-%service
+%services
 rabbitmq-server
 
 %description
@@ -89,6 +89,8 @@ Section | Description | Prepend Modifiers | Append Modifiers
 `%directories` | Provide list of directories to be created|`-` | `=`
 `%symlinks`   | Provide list of symlinks to be created using `linkfile->targetfile`||
 `%services`   | Provide list of services that should be running (or not running with minus notation)|`-`|
+`%commands`   | Provide a list of commands that should be executed||
+`%scripts`    | Provide a list of scripts that should be executed||
 `%cronjobs`   |provide a list of cronjobs to be configured. Put these in as normal crontab entries. It will get translated to native `cron.present` state.||
 
 
