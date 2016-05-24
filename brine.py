@@ -129,6 +129,12 @@ TEMPLATES = {
             - name: ${cmd}
         """),
 
+    'cmd_script': Template("""
+        run_${state}_${title}_script:
+          cmd.script:
+            - name: ${script}
+        """),
+
     'sysctl_present': Template("""
         {% for setting, value in sysctl.items() %}
         ${state}_{{ setting }}:
@@ -279,14 +285,15 @@ class Brine(object):
             self.section_sysctl(),
             self.section_header('packages'),
             self.section_packages(),
-            self.section_header('files'),
+            self.section_header('files', extra=['directories']),
             self.section_directories(),
             self.section_files(),
             self.section_symlinks(),
             self.section_header('services'),
             self.section_services(),
-            self.section_header('commands'),
+            self.section_header('commands', extra=['scripts']),
             self.section_commands(),
+            self.section_scripts(),
             self.section_header('cronjobs'),
             self.section_cronjobs(),
         ]
@@ -309,14 +316,10 @@ class Brine(object):
 
 
     def has_section(self, name):
-        # This condition should fix the following:
-        # If you have a %directories section without
-        # a %files section the ## FILES comment-header is not
-        # placed in the init.sls
-        if name == 'files' and len(self.parsed.get(name, [])) == 0:
-            name = 'directories'
         return len(self.parsed.get(name, [])) > 0
 
+    def has_sections(self, *names):
+        return any(self.has_section(name) for name in names)
 
     def section_items(self, name):
         """
@@ -329,12 +332,13 @@ class Brine(object):
             yield mod, item[len(mod):]
 
 
-    def section_header(self, name):
+    def section_header(self, name, extra=None):
         """
         Generate the section header for the named section.
         """
         lines = []
-        if self.has_section(name):
+        extra = [] if (extra is None) else extra
+        if self.has_section(name) or self.has_sections(*extra):
             lines.append(TEMPLATES['module_header'].render(module=name.upper(), doc_link=DOC_URLS[name]))
         return '\n'.join(lines)
 
@@ -558,7 +562,7 @@ class Brine(object):
                 lines.append(TEMPLATES['service_dead'].render(state=self.statename, svc=service))
         return '\n'.join(lines)
 
-#--- commands
+#--- commands, scripts (these should all be under the ## COMMANDS section header)
 
     def section_commands(self):
         lines = []
@@ -566,6 +570,11 @@ class Brine(object):
             lines.append(TEMPLATES['cmd_run'].render(state=self.statename, cmd=cmd, title=cmd.split()[0]))
         return '\n'.join(lines)
 
+    def section_scripts(self):
+        lines = []
+        for script in self.section_items('scripts'):
+            lines.append(TEMPLATES['cmd_script'].render(state=self.statename, script=script[1], title=script[1]))
+        return '\n'.join(lines)
 #--- cronjobs
 
     def section_cronjobs(self):
